@@ -8,11 +8,9 @@
 using namespace std;
 
 int startState;
-vector<int> eNFAfinalStateSet;
-vector<pair<int,int>> eNFAadj[1010]; //{Terminal, State}
-vector<int> closure[1010];
-
-bool iseNFA = false;
+vector<int> stateSet, terminalSet, finalStateSet;
+vector<pair<int,int>> NFAadj[1010]; //{Terminal, State}
+//'0'~'9' : 48~57, 'A'~'B' : 65~90, 'a'~'z' : 97~122
 
 int strState2numState(string stateStr)
 {
@@ -23,42 +21,68 @@ int strState2numState(string stateStr)
 void parsing(string str)
 {
 	int idx = 0;
-	string tmp;
-	tmp.clear();
+	string tmp; tmp.clear();
 
-	for (; idx < str.length(); idx++) 
-		if (str[idx] != ' ') tmp += str[idx];
+	for (; idx < str.length(); idx++) {
+		if (str[idx] == '}') return;
+		else if (str[idx] != ' ' && str[idx] != '\t') tmp += str[idx];
+		else break;
+	}
 
-	if (tmp == "StateSet") { //"{ q000, q001, q002, ... }" -> 0, 1, 2
+	if (tmp == "StateSet" || tmp == "FinalStateSet") { //"{ q000, q001, q002, ... }" -> { 0, 1, 2, ... }
 		idx += 4;
-		string strState;
-		strState.clear();
+		string strState; strState.clear();
 		for (; idx < str.length(); idx++) {
-			if (str[idx] == ',' || str[idx] == ' ') {
-
-
+			if ((str[idx] == ',' || str[idx] == ' ') && !strState.empty()) {
+				int curState = strState2numState(strState);
+				if (tmp == "StateSet") stateSet.push_back(curState);
+				else if (tmp == "FinalStateSet") finalStateSet.push_back(curState);
 				strState.clear();
 			}
-			else strState += str[idx];
+			else if (!(str[idx] == ',' || str[idx] == ' ')) strState += str[idx];
 		}
 	}
-	else if (tmp == "TerminalSet") { //"{ 0, a }" -> {'0', 'a'}
 
+	else if (tmp == "TerminalSet") { //"{ 0, a }" 
+		idx += 4;
+		for (; idx < str.length(); idx++) {
+			if ((str[idx] >= '0' && str[idx] <= '9') || (str[idx] >= 'a' && str[idx] <= 'z')
+				|| (str[idx] >= 'A' && str[idx] <= 'Z'))
+				terminalSet.push_back(str[idx]);
+		}
 	}
+
 	else if (tmp == "DeltaFunctions") return;
-	else if (tmp == "StarteState") //"q000" -> 0
+
+	else if (tmp == "StartState") //"q000" -> 0
 		startState = strState2numState(str.substr(idx + 3));
-	else if (tmp == "FinalStateSet") { //"{ q001, q004 }" -> {0, 4}
 
-	}
 	else { //list of DeltaFunctions -> adjacency matrix
+		int curState, nxtState, curTerm;
+		string tmp; tmp.clear();
 
+		for (; idx < str.length(); idx++) { //get curStte
+			if (str[idx] == 'q' || (str[idx] >= '0' && str[idx] <= '9')) tmp += str[idx];
+			else if (str[idx] == ',') break;
+		}
+		curState = strState2numState(tmp); tmp.clear();
+
+		idx += 2;
+		curTerm = str[idx++];
+
+		for (; idx < str.length(); idx++) { //get nxtStates
+			if (str[idx] == 'q' || (str[idx] >= '0' && str[idx] <= '9')) tmp += str[idx];
+			else if (str[idx] == ',' || str[idx] == '}') {
+				nxtState = strState2numState(tmp); tmp.clear();
+				NFAadj[curState].push_back({ curTerm, nxtState });
+			}
+		}
 	}
 }
 
-void getClosure()
+int getStateSetHash()
 {
-
+	return 0;
 }
 
 void input()
@@ -72,11 +96,6 @@ void input()
 }
 
 void NFA2DFA()
-{
-
-}
-
-void eNFA2DFA()
 {
 
 }
@@ -96,8 +115,7 @@ int main()
 	ios_base::sync_with_stdio(0);
 	cin.tie(0); cout.tie(0);
 	input();
-	if (!iseNFA) NFA2DFA();
-	else eNFA2DFA();
+	NFA2DFA();
 	DFA2rDFA();
 	output();
 }
