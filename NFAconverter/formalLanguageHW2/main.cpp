@@ -10,12 +10,12 @@ using namespace std;
 int startState;
 vector<int> stateSet, terminalSet, finalStateSet;
 vector<pair<int,int>> NFAadj[1010]; //{Terminal, State}
-//'0'~'9' : 48~57, 'A'~'B' : 65~90, 'a'~'z' : 97~122
+//'0'~'9' : 48~57, 'A'~'B' : 65~90, 'a'~'z' : 97~122, 'ε' : 52917
 
 int strState2numState(string stateStr)
 {
 	return (stateStr[1] - '0') * 100 + (stateStr[2] - '0') * 10 
-		+ (stateStr[3] - '0'); //"q123" -> q123
+		+ (stateStr[3] - '0'); //"q123" -> 123
 }
 
 void parsing(string str)
@@ -47,7 +47,7 @@ void parsing(string str)
 		idx += 4;
 		for (; idx < str.length(); idx++) {
 			if ((str[idx] >= '0' && str[idx] <= '9') || (str[idx] >= 'a' && str[idx] <= 'z')
-				|| (str[idx] >= 'A' && str[idx] <= 'Z'))
+				|| (str[idx] >= 'A' && str[idx] <= 'Z') || str[idx] == 'ε')
 				terminalSet.push_back(str[idx]);
 		}
 	}
@@ -97,7 +97,7 @@ void input()
 
 void NFA2DFA()
 {
-
+	for (int i = 0; i <= 1000; i++) sort(NFAadj[i].begin(), NFAadj[i].end());
 }
 
 void DFA2rDFA()
