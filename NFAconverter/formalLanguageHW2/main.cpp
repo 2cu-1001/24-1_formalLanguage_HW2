@@ -7,10 +7,28 @@
 #define y second
 using namespace std;
 
-int startState;
+int startState, startStateIdx;
 vector<int> stateSet, terminalSet, finalStateSet;
-vector<pair<int,int>> NFAadj[1010]; //{Terminal, State}
-//'0'~'9' : 48~57, 'A'~'B' : 65~90, 'a'~'z' : 97~122, 'ε' : 52917
+vector<int> adjNFA[1010][150];
+//adjNFA[i][j] : state i에서 terminal j를 보고 갈 수 있는 state 집합 vector
+//'0'~'9' : 48~57, 'A'~'B' : 65~90, 'a'~'z' : 97~122, 'ε' : 52917 -> 123
+
+/* input form ex)
+StateSet = { q000, q001, q002, q003, q004 }
+TerminalSet = { 0, 1 }
+DeltaFunctions = {
+	(q000, 0) = {q001, q002}
+	(q000, 1) = {q001, q003}
+	(q001, 0) = {q001, q002}
+	(q001, 1) = {q001, q003}
+	(q002, 0) = {q004}
+	(q003, 1) = {q004}
+	(q004, 0) = {q004}
+	(q004, ε) = {q004}
+}
+StartState = q000
+FinalStateSet = { q004 }
+*/
 
 int strState2numState(string stateStr)
 {
@@ -47,16 +65,21 @@ void parsing(string str)
 		idx += 4;
 		for (; idx < str.length(); idx++) {
 			if ((str[idx] >= '0' && str[idx] <= '9') || (str[idx] >= 'a' && str[idx] <= 'z')
-				|| (str[idx] >= 'A' && str[idx] <= 'Z') || str[idx] == 'ε')
+				|| (str[idx] >= 'A' && str[idx] <= 'Z'))
 				terminalSet.push_back(str[idx]);
+			else if (str[idx] == 'ε')
+				terminalSet.push_back(123);
 		}
 	}
 
 	else if (tmp == "DeltaFunctions") return;
 
-	else if (tmp == "StartState") //"q000" -> 0
+	else if (tmp == "StartState") { //"q000" -> 0
 		startState = strState2numState(str.substr(idx + 3));
-
+		for(int i = 0; i<stateSet.size(); i++) 
+			if (stateSet[i] == startState) { startStateIdx = i; break; }
+	}
+		
 	else { //list of DeltaFunctions -> adjacency matrix
 		int curState, nxtState, curTerm;
 		string tmp; tmp.clear();
@@ -74,7 +97,8 @@ void parsing(string str)
 			if (str[idx] == 'q' || (str[idx] >= '0' && str[idx] <= '9')) tmp += str[idx];
 			else if (str[idx] == ',' || str[idx] == '}') {
 				nxtState = strState2numState(tmp); tmp.clear();
-				NFAadj[curState].push_back({ curTerm, nxtState });
+				if (curTerm == 'ε') adjNFA[curState][123].push_back(nxtState);
+				else adjNFA[curState][curTerm].push_back(nxtState);
 			}
 		}
 	}
@@ -82,7 +106,7 @@ void parsing(string str)
 
 int getStateSetHash()
 {
-	return 0;
+	return NULL;
 }
 
 void input()
@@ -96,8 +120,9 @@ void input()
 }
 
 void NFA2DFA()
-{
-	for (int i = 0; i <= 1000; i++) sort(NFAadj[i].begin(), NFAadj[i].end());
+{	
+
+
 }
 
 void DFA2rDFA()
