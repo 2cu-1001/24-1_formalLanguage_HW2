@@ -8,12 +8,14 @@
 #define ll long long
 #define p (long long int)1e+9
 #define a (long long int)37
+#define x first
+#define y second
 
 using namespace std;
 
-ll powArr[1010], startState, startStateIdx;
-vector<ll> stateSet, terminalSet, finalStateSet, adjNFA[1010][150];
-vector<vector<ll>> stateSets;
+ll powArr[1010], startState, startStateIdx, adjDFA[1010][150];
+vector<ll> stateSet, terminalSet, finalStateSet, adjNFA[1010][150], adjrDFA[1010][150];
+vector<vector<ll>> stateSetsDFA;
 unordered_set<ll> stateSetHash;
 //adjNFA[i][j] : state i에서 terminal j를 보고 갈 수 있는 state 집합 vector
 //'0'~'9' : 48~57, 'A'~'B' : 65~90, 'a'~'z' : 97~122, 'ε' : 52917 -> 123
@@ -41,12 +43,14 @@ void getPowArr()
 	for (int i = 1; i <= 1000; i++) powArr[i] = (powArr[i - 1] * a) % p;
 }
 
+//3rd call----------------------------------------------------------------------------------------------
 int strState2numState(string stateStr)
 {
 	return (stateStr[1] - '0') * 100 + (stateStr[2] - '0') * 10 
 		+ (stateStr[3] - '0'); //"q123" -> 123
 }
 
+//2nd call----------------------------------------------------------------------------------------------
 void parsing(string str)
 {
 	int idx = 0;
@@ -115,13 +119,25 @@ void parsing(string str)
 	}
 }
 
-int getStateSetHash(vector<ll> &tmpStateSet)
+void NFAoutput()
 {
-	ll curHash = 0;
 
-	return NULL;
 }
 
+ll getStateSetHash(vector<ll> &tmpStateSet)
+{
+	ll curHash = 0;
+	for (int i = 0; i < tmpStateSet.size(); i++) 
+		curHash = (curHash + tmpStateSet[i] * powArr[i]) % p;
+	return curHash;
+}
+
+void DFAoutput()
+{
+
+}
+
+// 1st call----------------------------------------------------------------------------------------------
 void input()
 {
 	string fileName, str; 
@@ -130,23 +146,50 @@ void input()
 	ifstream file(fileName);
 	while (getline(file, str))
 		parsing(str);
+	NFAoutput();
 }
 
 void NFA2DFA()
 {	
-	queue<vector<ll>> q;
-	for (auto curTerm : terminalSet) {
-		stateSetHash.insert(getStateSetHash(adjNFA[startStateIdx][curTerm]));
-		q.push(adjNFA[startStateIdx][curTerm]);
-	}
+	queue<pair<vector<ll>, ll>> q;
+	vector<ll> startStateSet = { startState };
+	ll stateNum = 0; 
 
+	stateSetsDFA.push_back(startStateSet);
+	stateSetHash.insert(getStateSetHash(startStateSet));
+	q.push({ startStateSet, stateNum });
+
+	//BFS를 통해 도달 가능한 state set들만 탐색
 	while (!q.empty()) {
-		vector<int> tmpNxtStatSet;
-		auto curStateSet = q.front(); q.pop();
-		for (auto curTerm : terminalSet) {
+		vector<ll> curStateSet;
+		ll curStateNum;
 
+		tie(curStateSet, curStateNum) = q.front(); q.pop();
+
+		for (ll curTerm : terminalSet) {
+			vector<ll> tmpNxtStatSet;
+			for (ll curState : curStateSet)
+				tmpNxtStatSet.insert(tmpNxtStatSet.begin(), adjNFA[curState][curTerm].begin(), 
+					adjNFA[curState][curTerm].end());
+
+			unique(tmpNxtStatSet.begin(), tmpNxtStatSet.end());
+			sort(tmpNxtStatSet.begin(), tmpNxtStatSet.end());
+
+			ll nxtStateSetHash = getStateSetHash(tmpNxtStatSet);
+			if (stateSetHash.find(nxtStateSetHash) == stateSetHash.end()) continue;
+			stateSetHash.insert(nxtStateSetHash);
+			stateSetsDFA.push_back(tmpNxtStatSet);
+			//현재 state의 해시값을 unordered_set에서 find, 이미 존재하는 state인지 검색
+			//이전에 등장한 적 없는 state set이면 q에 삽입하고 set과 stateSetsDFA 벡터에 기록
+
+			ll nxtStateNum = stateSetsDFA.size() - 1;
+			adjDFA[curStateNum][curTerm] = nxtStateNum;
+			//또한 인접행렬 adjDFA에 cur state와 nxt state의 관계를 기록
+			
+			q.push({ tmpNxtStatSet, nxtStateNum});
 		}
 	}
+	DFAoutput();
 }
 
 void DFA2rDFA()
