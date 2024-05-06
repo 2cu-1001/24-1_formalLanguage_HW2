@@ -3,17 +3,22 @@
 #include <vector>
 #include <algorithm>
 #include <string>
-#define x first
-#define y second
+#include <queue>
+#include <unordered_set>
+#define ll long long
+#define p (long long int)1e+9
+#define a (long long int)37
+
 using namespace std;
 
-int startState, startStateIdx;
-vector<int> stateSet, terminalSet, finalStateSet;
-vector<int> adjNFA[1010][150];
+ll powArr[1010], startState, startStateIdx;
+vector<ll> stateSet, terminalSet, finalStateSet, adjNFA[1010][150];
+vector<vector<ll>> stateSets;
+unordered_set<ll> stateSetHash;
 //adjNFA[i][j] : state i에서 terminal j를 보고 갈 수 있는 state 집합 vector
 //'0'~'9' : 48~57, 'A'~'B' : 65~90, 'a'~'z' : 97~122, 'ε' : 52917 -> 123
 
-/* input form ex)
+/* input form ex
 StateSet = { q000, q001, q002, q003, q004 }
 TerminalSet = { 0, 1 }
 DeltaFunctions = {
@@ -29,6 +34,12 @@ DeltaFunctions = {
 StartState = q000
 FinalStateSet = { q004 }
 */
+
+void getPowArr()
+{
+	powArr[0] = 1;
+	for (int i = 1; i <= 1000; i++) powArr[i] = (powArr[i - 1] * a) % p;
+}
 
 int strState2numState(string stateStr)
 {
@@ -81,7 +92,7 @@ void parsing(string str)
 	}
 		
 	else { //list of DeltaFunctions -> adjacency matrix
-		int curState, nxtState, curTerm;
+		ll curState, nxtState, curTerm;
 		string tmp; tmp.clear();
 
 		for (; idx < str.length(); idx++) { //get curStte
@@ -104,8 +115,10 @@ void parsing(string str)
 	}
 }
 
-int getStateSetHash()
+int getStateSetHash(vector<ll> &tmpStateSet)
 {
+	ll curHash = 0;
+
 	return NULL;
 }
 
@@ -121,8 +134,19 @@ void input()
 
 void NFA2DFA()
 {	
+	queue<vector<ll>> q;
+	for (auto curTerm : terminalSet) {
+		stateSetHash.insert(getStateSetHash(adjNFA[startStateIdx][curTerm]));
+		q.push(adjNFA[startStateIdx][curTerm]);
+	}
 
+	while (!q.empty()) {
+		vector<int> tmpNxtStatSet;
+		auto curStateSet = q.front(); q.pop();
+		for (auto curTerm : terminalSet) {
 
+		}
+	}
 }
 
 void DFA2rDFA()
@@ -139,6 +163,7 @@ int main()
 {
 	ios_base::sync_with_stdio(0);
 	cin.tie(0); cout.tie(0);
+	getPowArr();
 	input();
 	NFA2DFA();
 	DFA2rDFA();
