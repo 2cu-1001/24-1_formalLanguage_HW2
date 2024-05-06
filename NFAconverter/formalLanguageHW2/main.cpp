@@ -14,8 +14,8 @@
 using namespace std;
 
 ll powArr[1010], startState, startStateIdx, adjDFA[1010][150];
-vector<ll> stateSet, terminalSet, finalStateSet, adjNFA[1010][150], adjrDFA[1010][150];
-vector<vector<ll>> stateSetsDFA;
+vector<ll> stateSet, terminalSet, finalStateSet, adjNFA[1010][150], closure[1010];
+vector<vector<ll>> stateSetsDFA, finalStateSetsDFA;
 unordered_set<ll> stateSetHash;
 //adjNFA[i][j] : state i에서 terminal j를 보고 갈 수 있는 state 집합 vector
 //'0'~'9' : 48~57, 'A'~'B' : 65~90, 'a'~'z' : 97~122, 'ε' : 52917 -> 123
@@ -37,20 +37,24 @@ StartState = q000
 FinalStateSet = { q004 }
 */
 
-void getPowArr()
-{
-	powArr[0] = 1;
-	for (int i = 1; i <= 1000; i++) powArr[i] = (powArr[i - 1] * a) % p;
-}
 
-//3rd call----------------------------------------------------------------------------------------------
 int strState2numState(string stateStr)
 {
 	return (stateStr[1] - '0') * 100 + (stateStr[2] - '0') * 10 
 		+ (stateStr[3] - '0'); //"q123" -> 123
 }
 
-//2nd call----------------------------------------------------------------------------------------------
+string numState2strState(ll stateNum)
+{
+	return "q" + to_string(stateNum / 100) + to_string((stateNum % 100) / 10) + to_string(stateNum % 10);
+}
+
+void getPowArr()
+{
+	powArr[0] = 1;
+	for (int i = 1; i <= 1000; i++) powArr[i] = (powArr[i - 1] * a) % p;
+}
+
 void parsing(string str)
 {
 	int idx = 0;
@@ -99,7 +103,7 @@ void parsing(string str)
 		ll curState, nxtState, curTerm;
 		string tmp; tmp.clear();
 
-		for (; idx < str.length(); idx++) { //get curStte
+		for (; idx < str.length(); idx++) { //get curState
 			if (str[idx] == 'q' || (str[idx] >= '0' && str[idx] <= '9')) tmp += str[idx];
 			else if (str[idx] == ',') break;
 		}
@@ -119,6 +123,13 @@ void parsing(string str)
 	}
 }
 
+void getClosure(int curState, int parState)
+{
+	closure[parState].push_back(curState);
+	for (ll nxtState : adjNFA[curState][123]) //ε은 123에 임의로 인덱싱
+		getClosure(nxtState, parState);
+}
+
 void NFAoutput()
 {
 
@@ -134,10 +145,44 @@ ll getStateSetHash(vector<ll> &tmpStateSet)
 
 void DFAoutput()
 {
+	cout << "StateSet = { ";
+	for (int i = 1; i < stateSetsDFA.size(); i++) {
+
+	}
+	cout << " }\n";
+	
+	cout << "TerminalSet = { " << (char)terminalSet[0];
+	for (int i = 1; i < terminalSet.size(); i++) cout << ", " << (char)terminalSet[i];
+	cout << " }\n";
+
+	cout << "DeltaFunctions = {\n";
+	for (int i = 0; i < stateSetsDFA.size(); i++) {
+		for (auto curTerm : terminalSet) {
+			if (adjDFA[i][curTerm] == -1) continue;
+
+		}
+	}
+	cout << "}\n";
+
+	cout << "StartState = { " << numState2strState(startState) << " }\n";
+
+	cout << "FinalStateSet = { ";
+}
+
+void rDFAoutput()
+{
 
 }
 
 // 1st call----------------------------------------------------------------------------------------------
+void init()
+{
+	getPowArr();
+	for (int i = 0; i < 1010; i++)
+		for (int j = 0; j < 150; j++)
+			adjDFA[i][j] = -1;
+}
+
 void input()
 {
 	string fileName, str; 
@@ -151,6 +196,10 @@ void input()
 
 void NFA2DFA()
 {	
+	//DFS를 통해 각 state의 closure 탐색
+	for(ll curState : stateSet)
+		getClosure(curState, curState);
+
 	queue<pair<vector<ll>, ll>> q;
 	vector<ll> startStateSet = { startState };
 	ll stateNum = 0; 
@@ -167,34 +216,22 @@ void NFA2DFA()
 		tie(curStateSet, curStateNum) = q.front(); q.pop();
 
 		for (ll curTerm : terminalSet) {
-			vector<ll> tmpNxtStatSet;
-			for (ll curState : curStateSet)
-				tmpNxtStatSet.insert(tmpNxtStatSet.begin(), adjNFA[curState][curTerm].begin(), 
-					adjNFA[curState][curTerm].end());
 
-			unique(tmpNxtStatSet.begin(), tmpNxtStatSet.end());
-			sort(tmpNxtStatSet.begin(), tmpNxtStatSet.end());
-
-			ll nxtStateSetHash = getStateSetHash(tmpNxtStatSet);
-			if (stateSetHash.find(nxtStateSetHash) == stateSetHash.end()) continue;
-			stateSetHash.insert(nxtStateSetHash);
-			stateSetsDFA.push_back(tmpNxtStatSet);
-			//현재 state의 해시값을 unordered_set에서 find, 이미 존재하는 state인지 검색
-			//이전에 등장한 적 없는 state set이면 q에 삽입하고 set과 stateSetsDFA 벡터에 기록
-
-			ll nxtStateNum = stateSetsDFA.size() - 1;
-			adjDFA[curStateNum][curTerm] = nxtStateNum;
-			//또한 인접행렬 adjDFA에 cur state와 nxt state의 관계를 기록
-			
-			q.push({ tmpNxtStatSet, nxtStateNum});
 		}
 	}
+
+	//BFS틑 통해 구한 state set에서 NFA의 finalstateset을 포함하는 state set들 탐색
+	for (auto curStateSet : stateSetsDFA) {
+
+	}
+
 	DFAoutput();
 }
 
 void DFA2rDFA()
 {
 
+	rDFAoutput();
 }
 
 void output()
@@ -206,7 +243,7 @@ int main()
 {
 	ios_base::sync_with_stdio(0);
 	cin.tie(0); cout.tie(0);
-	getPowArr();
+	init();
 	input();
 	NFA2DFA();
 	DFA2rDFA();
