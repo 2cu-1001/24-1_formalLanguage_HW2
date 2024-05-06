@@ -8,8 +8,6 @@
 #define ll long long
 #define p (long long int)1e+9
 #define a (long long int)37
-#define x first
-#define y second
 
 using namespace std;
 
@@ -19,24 +17,6 @@ vector<vector<ll>> stateSetsDFA, finalStateSetsDFA;
 unordered_set<ll> stateSetHash;
 //adjNFA[i][j] : state i에서 terminal j를 보고 갈 수 있는 state 집합 vector
 //'0'~'9' : 48~57, 'A'~'B' : 65~90, 'a'~'z' : 97~122, 'ε' : 52917 -> 123
-
-/* input form ex
-StateSet = { q000, q001, q002, q003, q004 }
-TerminalSet = { 0, 1 }
-DeltaFunctions = {
-	(q000, 0) = {q001, q002}
-	(q000, 1) = {q001, q003}
-	(q001, 0) = {q001, q002}
-	(q001, 1) = {q001, q003}
-	(q002, 0) = {q004}
-	(q003, 1) = {q004}
-	(q004, 0) = {q004}
-	(q004, ε) = {q004}
-}
-StartState = q000
-FinalStateSet = { q004 }
-*/
-
 
 int strState2numState(string stateStr)
 {
@@ -179,8 +159,7 @@ void init()
 {
 	getPowArr();
 	for (int i = 0; i < 1010; i++)
-		for (int j = 0; j < 150; j++)
-			adjDFA[i][j] = -1;
+		for (int j = 0; j < 150; j++) adjDFA[i][j] = -1;
 }
 
 void input()
@@ -201,7 +180,7 @@ void NFA2DFA()
 		getClosure(curState, curState);
 
 	queue<pair<vector<ll>, ll>> q;
-	vector<ll> startStateSet = { startState };
+	vector<ll> startStateSet = closure[startStateIdx];
 	ll stateNum = 0; 
 
 	stateSetsDFA.push_back(startStateSet);
@@ -216,13 +195,46 @@ void NFA2DFA()
 		tie(curStateSet, curStateNum) = q.front(); q.pop();
 
 		for (ll curTerm : terminalSet) {
+			vector<ll> nxtStatSet, nxtClosureSet;
+			for (ll curState : curStateSet)
+				nxtStatSet.insert(nxtStatSet.begin(), adjNFA[curState][curTerm].begin(),
+					adjNFA[curState][curTerm].end());
+			unique(nxtStatSet.begin(), nxtStatSet.end());
+			//nxtStatSet : 현재 state에서 어떤 terminal 보고 갈 수 있는 state 집합
 
+			for (ll nxtState : nxtStatSet) 
+				nxtClosureSet.insert(nxtClosureSet.begin(), closure[nxtState].begin(), closure[nxtState].end());
+			unique(nxtClosureSet.begin(), nxtClosureSet.end());
+			sort(nxtClosureSet.begin(), nxtClosureSet.end());
+			//nxtClosureSet : nxtStatSet의 state들의 closure의 합집합
+
+			ll nxtStateSetHash = getStateSetHash(nxtClosureSet);
+			if (stateSetHash.find(nxtStateSetHash) == stateSetHash.end()) continue;
+			stateSetHash.insert(nxtStateSetHash);
+			stateSetsDFA.push_back(nxtClosureSet);
+			//nxtClosureSet의 해시값을 unordered_set에서 find, 이미 존재하는 state인지 검색
+			//nxtClosureSet가 이전에 등장한 적 없는 state set이면 q에 삽입하고 set과 stateSetsDFA 벡터에 기록
+
+			ll nxtStateNum = stateSetsDFA.size() - 1;
+			adjDFA[curStateNum][curTerm] = nxtStateNum;
+			//또한 인접행렬 adjDFA에 cur state와 nxt state의 관계를 기록
+
+			q.push({ nxtClosureSet, nxtStateNum });
 		}
 	}
 
 	//BFS틑 통해 구한 state set에서 NFA의 finalstateset을 포함하는 state set들 탐색
-	for (auto curStateSet : stateSetsDFA) {
+	sort(finalStateSet.begin(), finalStateSet.end());
 
+	for (auto curStateSet : stateSetsDFA) {
+		sort(curStateSet.begin(), curStateSet.end());
+		bool isCurStateSetOk = true;
+
+		for (ll curState : finalStateSet) 
+			if (find(curStateSet.begin(), curStateSet.end(), curState) == curStateSet.end())
+				{ isCurStateSetOk = false; break; }
+
+		if (isCurStateSetOk) finalStateSetsDFA.push_back(curStateSet);
 	}
 
 	DFAoutput();
