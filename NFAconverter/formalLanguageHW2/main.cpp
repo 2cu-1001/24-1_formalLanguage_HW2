@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -14,10 +15,12 @@
 
 using namespace std;
 
-ll powArr[1010], startState, startStateIdx, adjDFA[1010][150], adjRDFA[1010][150]; //항상 0이 start state
+bool isEpsilon = false;
+ll powArr[1010], startState, startStateIdx, adjDFA[1010][150], adjRDFA[1010][150]; 
+string fileName;
 vector<ll> stateSet, terminalSet, finalStateSet, adjNFA[1010][150], closure[1010];
 vector<vector<ll>> stateSetsDFA, finalStateSetsDFA, stateSetsRDFA, finalStateSetsRDFA;
-vector<ll> finalStateSetsDFAidx, finalStateSetsRDFAidx;
+vector<ll>  startStateSetDFA, startStateSetRDFA, finalStateSetsDFAidx, finalStateSetsRDFAidx;
 unordered_set<ll> stateSetHashDFA, stateSetHashRDFA;
 unordered_map<ll, ll> stateSetHashNumDFA;
 //adjNFA[i][j] : state i에서 terminal j를 보고 갈 수 있는 state 집합 vector
@@ -69,7 +72,7 @@ void parsing(string str)
             else if (!(str[idx] == ',' || str[idx] == ' ')) strState += str[idx];
         }
     }
-
+    
     else if (tmp == "TerminalSet") { //"{ 0, a }" 
         idx += 4;
         for (; idx < str.length(); idx++) {
@@ -106,7 +109,10 @@ void parsing(string str)
             if (str[idx] == 'q' || (str[idx] >= '0' && str[idx] <= '9')) tmp += str[idx];
             else if (str[idx] == ',' || str[idx] == '}') {
                 nxtState = strState2numState(tmp); tmp.clear();
-                if (curTerm == 'ε') adjNFA[curState][123].push_back(nxtState);
+                if (curTerm < 0) {
+                    adjNFA[curState][123].push_back(nxtState);
+                    isEpsilon = true;
+                }
                 else adjNFA[curState][curTerm].push_back(nxtState);
             }
         }
@@ -118,11 +124,6 @@ void getClosure(int curState, int parState)
     closure[parState].push_back(curState);
     for (ll nxtState : adjNFA[curState][123]) //ε은 123에 임의로 인덱싱
         getClosure(nxtState, parState);
-}
-
-void NFAoutput()
-{
-    //파일 복사해서 출력하기
 }
 
 ll getStateSetHash(vector<ll>& tmpStateSet)
@@ -147,7 +148,10 @@ void DFAoutput()
     cout << " }\n";
 
     cout << "TerminalSet = { " << (char)terminalSet[0];
-    for (int i = 1; i < terminalSet.size(); i++) cout << ", " << (char)terminalSet[i];
+    for (int i = 1; i < terminalSet.size(); i++) {
+        if (terminalSet[i] == 123) continue;
+        else cout << ", " << (char)terminalSet[i];
+    }
     cout << " }\n";
 
     cout << "DeltaFunctions = {\n";
@@ -173,7 +177,11 @@ void DFAoutput()
     }
     cout << "}\n";
 
-    cout << "StartState = " << numState2strState(startState) << "\n";
+    cout << "startState = { " << numState2strState(startStateSetDFA[0]);
+    for (int i = 1; i < startStateSetDFA.size(); i++) {
+        cout << ", " << numState2strState(startStateSetDFA[i]);
+    }
+    cout << " }\n";
 
     cout << "FinalStateSet = { ";
     for (int j = 0; j < finalStateSetsDFA.size(); j++) {
@@ -227,7 +235,11 @@ void RDFAoutput()
     }
     cout << "}\n";
 
-    cout << "StartState = " << numState2strState(startState) << "\n";
+    cout << "startState = { " << numState2strState(startStateSetRDFA[0]);
+    for (int i = 1; i < startStateSetRDFA.size(); i++) {
+        cout << ", " << numState2strState(startStateSetRDFA[i]);
+    }
+    cout << " }\n";
 
     cout << "FinalStateSet = { ";
     for (int j = 0; j < finalStateSetsRDFA.size(); j++) {
@@ -241,23 +253,26 @@ void RDFAoutput()
     cout << " }\n";
 }
 
-// 1st call----------------------------------------------------------------------------------------------
 void init()
 {
     getPowArr();
     for (int i = 0; i < 1010; i++)
-        for (int j = 0; j < 150; j++) adjDFA[i][j] = -1;
+        for (int j = 0; j < 150; j++) adjDFA[i][j] = adjRDFA[i][j] = - 1;
 }
 
 void input()
 {
-    string fileName, str;
-    cout << "Enter input file name (ex)abc.txt) : ";
+    string str;
+    cout <<  "파일명 입력(ex)abc.txt) : ";
     cin >> fileName;
     ifstream file(fileName);
-    while (getline(file, str))
+    string NFAoutPutName = fileName.substr(0, fileName.length() - 4) + "NFA.txt";
+    freopen(NFAoutPutName.c_str(), "w", stdout);
+    while (getline(file, str)) {
         parsing(str);
-    NFAoutput();
+        cout << str << "\n";
+    }
+    fileName = fileName.substr(0, fileName.length() - 4);
 }
 
 void NFA2DFA()
@@ -267,19 +282,20 @@ void NFA2DFA()
         getClosure(curState, curState);
 
     queue<pair<vector<ll>, ll>> q;
-    vector<ll> startStateSet = closure[startStateIdx];
-    ll stateNum = 0;
+    vector<ll> startStateSet = closure[startState];
+    ll stateNum = startState;
 
     stateSetsDFA.push_back(startStateSet);
     stateSetHashDFA.insert(getStateSetHash(startStateSet));
-    q.push({ startStateSet, stateNum });
+    stateSetHashNumDFA.insert({ getStateSetHash(startStateSet), 0 });
+    q.push({ startStateSet, 0 });
 
     //BFS를 통해 도달 가능한 state set들만 탐색
     while (!q.empty()) {
         vector<ll> curStateSet;
         ll curStateNum;
 
-        tie(curStateSet, curStateNum) = q.front(); 
+        tie(curStateSet, curStateNum) = q.front();
         q.pop();
 
         for (ll curTerm : terminalSet) {
@@ -299,9 +315,11 @@ void NFA2DFA()
             nxtClosureSet.erase(unique(nxtClosureSet.begin(), nxtClosureSet.end()), nxtClosureSet.end());
             //nxtClosureSet : nxtStatSet의 state들의 closure의 합집합
 
+            if (nxtClosureSet.empty()) continue;
+
             ll nxtStateSetHash = getStateSetHash(nxtClosureSet);
             if (stateSetHashDFA.find(nxtStateSetHash) != stateSetHashDFA.end()) {
-                adjDFA[curStateNum][curTerm] = stateSetHashNumDFA.find(nxtStateSetHash)->y;
+                adjDFA[curStateNum][curTerm] = stateSetHashNumDFA.find(nxtStateSetHash)->second;
                 continue;
                 //기존의 state set이 재등장
             }
@@ -340,6 +358,11 @@ void NFA2DFA()
         }
     }
 
+    //startStateSet 
+    startStateSetDFA = stateSetsDFA[0];
+
+    string DFAoutPutNaem = fileName + "DFA.txt";
+    freopen(DFAoutPutNaem.c_str(), "w", stdout);
     DFAoutput();
 }
 
@@ -359,6 +382,7 @@ void DFA2RDFA()
     newStateSets.push_back(tmpNonFinalStateSet);
 
     bool isSplit = true;
+    //분할이 더 이상 일어나지 않을 때까지 분할
     while (isSplit) {
         isSplit = false;
         vector<vector<ll>> tmpNewStateSets;
@@ -373,63 +397,70 @@ void DFA2RDFA()
                 vector<ll> tmpNxtStateSets;
                 for (auto curTerm : terminalSet) {
                     auto nxtStateNum = adjDFA[curState][curTerm];
-                    for(int i = 0; i<newStateSets.size(); i++)
+
+                    bool flag = false;
+                    for (int i = 0; i < newStateSets.size(); i++)
                         if (find(newStateSets[i].begin(), newStateSets[i].end(), nxtStateNum) != newStateSets[i].end()) {
+                            flag = true;
                             tmpNxtStateSets.push_back(i); break;
                         }
+                    if (!flag) tmpNxtStateSets.push_back(-1);
+
                 }
                 tmpStateSetHash.push_back({ getStateSetHash(tmpNxtStateSets), curState });
             }
 
-            sort(tmpStateSetHash.begin(), tmpStateSetHash.end());
+            sort(tmpStateSetHash.begin(), tmpStateSetHash.end()); 
             vector<ll> tmp;
-
-            for (int i = 0; i < tmpStateSetHash.size(); i++) {
+            tmp.push_back(tmpStateSetHash[0].y);
+            //필요시, curStateSet에서 split
+            for (int i = 1; i < tmpStateSetHash.size(); i++) {
                 if (i > 0 && tmpStateSetHash[i].x != tmpStateSetHash[i - 1].x) {
-                    tmpNewStateSets.push_back(tmp); tmp.clear(); tmp.push_back(tmpStateSetHash[i].y);
+                    tmpNewStateSets.push_back(tmp); tmp.clear(); 
+                    tmp.push_back(tmpStateSetHash[i].y);
                     isSplit = true;
                 }
                 else tmp.push_back(tmpStateSetHash[i].y);
             }
             if (!tmp.empty()) tmpNewStateSets.push_back(tmp);
-            //필요시, curStateSet에서 split
         }
         newStateSets = tmpNewStateSets;
         //split 이후 stateSet으로 newStateSet 갱신
     }
-    //분할이 더 이상 일어나지 않을 때까지 분할
-
+ 
     stateSetsRDFA = newStateSets;
     for (auto curStateSet : stateSetsRDFA) sort(curStateSet.begin(), curStateSet.end());
     sort(stateSetsRDFA.begin(), stateSetsRDFA.end(), cmp);
 
+    //adjRDFA에 mere
     for (int i = 0; i < stateSetsRDFA.size(); i++) {
         auto curStateSetNum = stateSetsRDFA[i][0];
         for (auto curTerm : terminalSet) {
             ll curNxtStateSetNum = adjDFA[curStateSetNum][curTerm];
+            if (curNxtStateSetNum == -1) continue;
             ll curNxtStateSetHash = getStateSetHash(stateSetsDFA[curNxtStateSetNum]);
 
-            for (int j = 0; j < stateSetsRDFA.size(); j++) 
-                for(auto cmpStateSetNum : stateSetsRDFA[j])
+            for (int j = 0; j < stateSetsRDFA.size(); j++)
+                for (auto cmpStateSetNum : stateSetsRDFA[j])
                     if (getStateSetHash(stateSetsDFA[cmpStateSetNum]) == curNxtStateSetHash) {
                         adjRDFA[i][curTerm] = j; j = stateSetsRDFA.size() + 1; break;
                     }
         }
     }
-    //adjRDFA에 merge
 
+    //DFA의 state 번호로 만든 stateSetsRDFA를 원래 state 번호로 변경
     for (int i = 0; i < stateSetsRDFA.size(); i++) {
         vector<ll> tmpStateSet; tmpStateSet.clear();
         for (auto stateSetNum : stateSetsRDFA[i]) {
-            tmpStateSet.insert(tmpStateSet.begin(), stateSetsDFA[stateSetNum].begin(), 
+            tmpStateSet.insert(tmpStateSet.begin(), stateSetsDFA[stateSetNum].begin(),
                 stateSetsDFA[stateSetNum].end());
         }
         sort(tmpStateSet.begin(), tmpStateSet.end());
         tmpStateSet.erase(unique(tmpStateSet.begin(), tmpStateSet.end()), tmpStateSet.end());
         stateSetsRDFA[i] = tmpStateSet;
     }
-    //DFA의 state 번호로 만든 stateSetsRDFA를 원래 state 번호로 변경
 
+    //RDFA의 final stateSet 탐색
     for (int i = 0; i < stateSetsRDFA.size(); i++) {
         auto curStateSet = stateSetsRDFA[i];
         sort(curStateSet.begin(), curStateSet.end());
@@ -445,15 +476,17 @@ void DFA2RDFA()
             finalStateSetsRDFAidx.push_back(i);
         }
     }
-    //RDFA의 final stateSet 탐색
 
+    //startStateSet 
+    startStateSetRDFA = stateSetsRDFA[0];
+
+    string RDFAoutPutNaem = fileName + "RDFA.txt";
+    freopen(RDFAoutPutNaem.c_str(), "w", stdout);
     RDFAoutput();
 }
 
 int main()
 {
-    ios_base::sync_with_stdio(0);
-    cin.tie(0); cout.tie(0);
     init();
     input();
     NFA2DFA();
