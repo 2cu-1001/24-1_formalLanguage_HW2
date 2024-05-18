@@ -263,7 +263,7 @@ void init()
 void input()
 {
     string str;
-    cout <<  "파일명 입력(ex)abc.txt) : ";
+    cout <<  "Enter input file name SS(ex)abc.txt) : ";
     cin >> fileName;
     ifstream file(fileName);
     string NFAoutPutName = fileName.substr(0, fileName.length() - 4) + "NFA.txt";
@@ -411,6 +411,7 @@ void DFA2RDFA()
             }
 
             sort(tmpStateSetHash.begin(), tmpStateSetHash.end()); 
+            if (tmpStateSetHash.empty()) continue;
             vector<ll> tmp;
             tmp.push_back(tmpStateSetHash[0].y);
             //필요시, curStateSet에서 split
