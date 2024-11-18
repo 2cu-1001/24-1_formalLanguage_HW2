@@ -1,4 +1,4 @@
-Projeect file of DFA2NFA converter
+Project file of DFA2NFA converter
 implemented with C++
 
 
